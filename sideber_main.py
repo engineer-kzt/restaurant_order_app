@@ -12,12 +12,13 @@ page_bg = """
 <style>
 /* 全体の背景色 */
 .stApp {
-    background-color: #FFDAB9;  /* 薄いオレンジ */
+    background-color:#AEC6CF;  /* パステルブルー */
+    color: black; /* 文字色を黒に指定 */
 }
 
 /* サイドバーの背景色 */
 [data-testid="stSidebar"] {
-    background-color: #DCDCDC;  /* 薄いグレー*/
+    background-color: #FFFFF0;  /* アイボリー */
 }
 </style>
 """
@@ -27,8 +28,8 @@ st.markdown(page_bg, unsafe_allow_html=True)
 
 
 # 定数・設定
-FOOD_MENU_FILE = "menu/food_menu.csv"
-FOOD_ORDER_FILE = "menu/order_history.csv"
+FOOD_MENU_FILE = "food_menu.csv"
+FOOD_ORDER_FILE = "order_history.csv"
 
 # ====セッション状態====
 # 追加注文-画面状態管理-A
@@ -90,8 +91,11 @@ def quantity_add(num_q):
 
 # フードメニュー表示
 def show_food_menu(new_reader):
+    food_image = Image.open("Carbonara.jpg")
     for key, el in new_reader.items():
-        st.text(f"ID-{key}[{el['商品名']}:{el['価格']}円]")
+        food_image = f"{el['画像']}"
+        st.image(food_image, width=100)
+        st.text(f"{key}[{el['商品名']}:{el['価格']}円]")
 
 
 # CSV→辞書形式で読み込み
@@ -159,29 +163,35 @@ st.session_state["page"] = select_page
 # 画面構成-メニュー操作-(メインプログラム)
 if select_page == "メニュー":
     st.title("メニュー")
-    st.text("左の操作バーから選択してください")
+    st.text(
+        "■左の操作バーから「追加注文」「注文履歴」「お会計」「店員呼出」のいずれかを選択してください。\n(スマートフォンの場合「＞＞」を押してください。\n押した後画面の真ん中を再度押してください)"
+    )
 
 # 画面構成【A】-追加注文-（メインプログラム）
 elif select_page == "追加注文":
     st.title("-注文追加-")
 
-    # サブ画面構成【1】-ID入力-
     if st.session_state["step_order_add"] == 1:
-        food_menu_show = foodmenu_to_dict(FOOD_MENU_FILE)
-        show_food_menu(food_menu_show)
-        num_input = num4_input()
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            num_input = num4_input()
 
-        if st.button("次へ"):
-            found = False  # 入力されたidがあるか探している
+            if st.button("次へ"):
+                found = False  # 入力されたidがあるか探している
+                food_menu = foodmenu_to_dict(FOOD_MENU_FILE)
+                for k in food_menu:
+                    if num_input == k:
+                        found = True
+                        food_id_add(num_input)
+                        next_to_step_order_add(2)
+                        st.rerun()
+
+                if not found:
+                    st.error("フードメニューに存在しない番号です")
+
+        with col2:
             food_menu = foodmenu_to_dict(FOOD_MENU_FILE)
-            for k in food_menu:
-                if num_input == k:
-                    found = True
-                    food_id_add(num_input)
-                    next_to_step_order_add(2)
-
-            if not found:
-                st.error("フードメニューに存在しない番号です")
+            show_menu = show_food_menu(food_menu)
 
     # サブ画面構成【2】-数量画面-
     elif st.session_state["step_order_add"] == 2:
@@ -196,8 +206,11 @@ elif select_page == "追加注文":
             if user_select == "追加":
                 quantity_add(food_quantity)
                 next_to_step_order_add(3)
+                st.rerun()
+
             elif user_select == "キャンセル":
                 next_to_step_order_add(1)
+                st.rerun()
 
     # サブ画面構成【3】-注文カゴ-
     elif st.session_state["step_order_add"] == 3:
@@ -219,8 +232,11 @@ elif select_page == "追加注文":
         if user_st_pd:
             if user_select == "注文":
                 next_to_step_order_add(4)
+                st.rerun()
+
             elif user_select == "キャンセル":
                 next_to_step_order_add(1)
+                st.rerun()
 
     # サブ画面構成【4】-注文完了画面-
     elif st.session_state["step_order_add"] == 4:
@@ -244,10 +260,12 @@ elif select_page == "追加注文":
 
         user_st_pd = st.button("追加画面へ戻る")
         next_to_step_order_add(1)
+        st.rerun()
+
 
 # 画面構成【B】-注文履歴-（メインプログラム）
 elif select_page == "注文履歴":
-    st.text("注文履歴")
+    st.text("【注文履歴】")
 
     order_history = foodorder_reading(FOOD_ORDER_FILE)
     calcu_result = calcu_order_history(order_history)
@@ -267,6 +285,7 @@ elif select_page == "店員呼出":
         if st.button("次へ"):
             if clerk_call_op == "はい":
                 next_to_step_callclerk(2)
+                st.rerun()
 
     # サブ画面構成【2】-店員呼出確認-
     elif st.session_state["step_callclerk"] == 2:
@@ -287,6 +306,7 @@ elif select_page == "お会計":
         if user_st_pd:
             if checkput_op == "はい":
                 next_to_step_checkout(2)
+                st.rerun()
 
     # サブ画面構成【8】-お会計確認画面-
     elif st.session_state["step_checkout"] == 2:
@@ -294,13 +314,13 @@ elif select_page == "お会計":
         calcu_result = calcu_order_history(order_history)
         sum_result = sum_calcu(calcu_result)
 
-        st.header("お会計確認")
+        st.text("-お会計確認-")
         st.text(f"【合計金額】:{sum_result}円")
         st.text(
             "金額ご確認の上、レジにて以下のQRコードを読み取りお支払いしてください。"
         )
 
-        QR_image = Image.open("menu/qrcode.png")
-        QR_image.show()
+        QR_image = Image.open("qrcode.png")
+        st.image(QR_image, width=200)
 
         next_to_step_checkout(1)
